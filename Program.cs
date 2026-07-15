@@ -60,7 +60,7 @@ static void RunMdbTools(string filePath, string? onlyTable)
 
 static List<string> GetTableNames(string filePath)
 {
-    var output = RunCommand("mdb-tables", $"-1 \"{filePath}\"");
+    var output = RunCommand("mdb-tables", "-1", filePath);
     return output
         .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
         .ToList();
@@ -68,30 +68,37 @@ static List<string> GetTableNames(string filePath)
 
 static (List<string> Columns, long RowCount) ExportTable(string filePath, string tableName)
 {
-    var output = RunCommand("mdb-export", $"\"{filePath}\" \"{tableName}\"");
-    var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+    const char fieldDelimiter = '\x1f'; // ASCII Unit Separator: won't collide with real column data, unlike comma
+    var output = RunCommand("mdb-export", "-d", fieldDelimiter.ToString(), filePath, tableName);
+    var records = output
+        .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+        .Select(line => line.TrimEnd('\r').Split(fieldDelimiter).ToList())
+        .ToList();
 
-    if (lines.Length == 0)
+    if (records.Count == 0)
     {
         return ([], 0);
     }
 
-    var columns = lines[0].Split(',').Select(c => c.Trim('"')).ToList();
-    long rowCount = lines.Length - 1;
+    var columns = records[0];
+    long rowCount = records.Count - 1;
     return (columns, rowCount);
 }
 
-static string RunCommand(string fileName, string arguments)
+static string RunCommand(string fileName, params string[] arguments)
 {
     var psi = new ProcessStartInfo
     {
         FileName = fileName,
-        Arguments = arguments,
         RedirectStandardOutput = true,
         RedirectStandardError = true,
         UseShellExecute = false,
         CreateNoWindow = true
     };
+    foreach (var arg in arguments)
+    {
+        psi.ArgumentList.Add(arg);
+    }
 
     using var process = Process.Start(psi) ?? throw new InvalidOperationException($"Failed to start {fileName}");
     string stdout = process.StandardOutput.ReadToEnd();

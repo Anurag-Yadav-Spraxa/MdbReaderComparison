@@ -66,13 +66,17 @@ Sample file created at `C:\mnt\SampleMultiTable.mdb` via ADOX/ACE OLEDB, bulk-in
 
 ## Test 3 — `UZ_202606_1.accdb` (Access2007, real production file, ~879 MB) — 2026-07-15
 
-| Metric | OleDb (ACE.OLEDB.12.0) — Windows | MMKiwi.MdbReader (0.1.0-beta1) — Windows | MMKiwi.MdbReader (0.1.0-beta1) — Linux | MMKiwi.MdbReader (zgabi + wj-hcs forks) — Windows Release avg | mdbtools — Linux Release avg (3 runs) |
+| Metric | OleDb (ACE.OLEDB.12.0) — Windows | MMKiwi.MdbReader (0.1.0-beta1) — Windows | MMKiwi.MdbReader (0.1.0-beta1) — Linux | MMKiwi.MdbReader (zgabi + wj-hcs forks) — Windows Release avg | mdbtools — Linux Release avg (4 runs) |
 |---|---|---|---|---|---|
 | Tables found | 1 (`DATA`) | 1 (`DATA`) | 1 (`DATA`) | 1 (`DATA`) | 1 (`DATA`) |
-| Rows read | 343,655 | 343,655 | 343,655 | 343,655 | 1,053,752 |
-| Columns | 81 | 81 | 81 | 81 | 83* |
+| Rows read | 343,655 | 343,655 | 343,655 | 343,655 | 343,655 |
+| Columns | 81 | 81 | 81 | 81 | 81 |
 | Column types | String / Double / DateTime | Text / Memo / Double / DateTime | Text / Memo / Double / DateTime | Text / Memo / Double / DateTime | (untyped — CSV export) |
-| Elapsed time | 70,706 ms | 152,340 ms | 35,755 ms | 8,066.75 ms | 13,060 ms |
+| Elapsed time | 70,706 ms | 152,340 ms | 35,755 ms | 8,066.75 ms | 20,193.25 ms |
 | Errors | none | none | none | none | none |
 
-\* mdbtools counted 83 "columns" vs. 81 for the other readers — not a real schema difference. The `G54NAME_...` column's display name contains embedded commas, and `mdb-export`'s CSV header is split naively (`Split(',')`, see `Program.cs`), so that one column gets counted as three. The row count (1,053,752) also differs from the 343,655 seen in earlier runs, indicating this run was against a larger/updated copy of the source file.
+## Note on mdbtools integration
+
+mdbtools required noticeably more custom code than the two managed readers: OleDb and MMKiwi.MdbReader are called directly as libraries, but mdbtools is a CLI tool (`mdb-tables` / `mdb-export`), so `Program.cs` has to shell out via `Process.Start`, capture stdout, and parse the output itself. `mdb-export`'s default CSV output doesn't quote the header row, so a column name containing commas would get mis-split — this was fixed by running `mdb-export`/`mdb-tables` with a non-comma field delimiter (ASCII Unit Separator `\x1f`) instead of parsing CSV.
+
+Example: `UZ_202606_1.accdb`'s `G54NAME_Фамилия,  имя и отчество,  а также адрес электронной почты` column name contains two literal commas. In the unquoted CSV header row, a plain comma split turned this single column into three, inflating the reported column count from 81 to 83 for that table.
