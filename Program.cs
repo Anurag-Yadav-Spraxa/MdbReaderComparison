@@ -1,7 +1,4 @@
-using System.Data.OleDb;
 using System.Diagnostics;
-using MMKiwi.MdbReader;
-using MMKiwi.MdbReader.Values;
 
 if (args.Length == 0)
 {
@@ -21,112 +18,28 @@ if (!File.Exists(filePath))
 Console.WriteLine($"Comparing readers for: {filePath}");
 Console.WriteLine(new string('=', 80));
 
-RunOleDb(filePath, onlyTable);
-Console.WriteLine();
-RunMmkiwi(filePath, onlyTable);
+RunMdbTools(filePath, onlyTable);
 
 return 0;
 
-static void RunOleDb(string filePath, string? onlyTable)
+static void RunMdbTools(string filePath, string? onlyTable)
 {
-    Console.WriteLine("--- OleDb (Microsoft.ACE.OLEDB.12.0) ---");
+    Console.WriteLine("--- mdbtools (mdb-tables / mdb-export) ---");
     var sw = Stopwatch.StartNew();
     try
     {
-        string connectionString = $"Provider=Microsoft.ACE.OLEDB.12.0;Data Source={filePath};Persist Security Info=False;";
-        using var connection = new OleDbConnection(connectionString);
-        connection.Open();
-
-        var schemaTable = connection.GetSchema("Tables", new string?[] { null, null, null, "TABLE" });
-        var tableNames = new List<string>();
-        foreach (System.Data.DataRow row in schemaTable.Rows)
-        {
-            tableNames.Add(row["TABLE_NAME"].ToString() ?? "");
-        }
-
+        var tableNames = GetTableNames(filePath);
         Console.WriteLine($"Tables found: {tableNames.Count} -> {string.Join(", ", tableNames)}");
 
         foreach (var tableName in onlyTable != null ? new List<string> { onlyTable } : tableNames)
         {
             var tableSw = Stopwatch.StartNew();
-            using var command = new OleDbCommand($"SELECT * FROM [{tableName}]", connection);
-            using var reader = command.ExecuteReader();
-
-            var columnNames = new List<string>();
-            var columnTypes = new List<string>();
-            for (int i = 0; i < reader.FieldCount; i++)
-            {
-                columnNames.Add(reader.GetName(i));
-                columnTypes.Add(reader.GetFieldType(i).Name);
-            }
-
-            long rowCount = 0;
-            while (reader.Read())
-            {
-                rowCount++;
-            }
-
-            tableSw.Stop();
-            Console.WriteLine($"  Table [{tableName}]: {reader.FieldCount} columns, {rowCount} rows, {tableSw.ElapsedMilliseconds} ms");
-            Console.WriteLine($"    Columns: {string.Join(", ", columnNames.Zip(columnTypes, (n, t) => $"{n}:{t}"))}");
-        }
-
-        sw.Stop();
-        Console.WriteLine($"OleDb total time: {sw.ElapsedMilliseconds} ms");
-    }
-    catch (Exception ex)
-    {
-        sw.Stop();
-        Console.WriteLine($"OleDb FAILED after {sw.ElapsedMilliseconds} ms: {ex.GetType().Name}: {ex.Message}");
-    }
-}
-
-void RunMmkiwi(string filePath, string? onlyTable)
-{
-    Console.WriteLine("--- MMKiwi.MdbReader ---");
-    var sw = Stopwatch.StartNew();
-    try
-    {
-        using MdbConnection handle = MdbConnection.Open(filePath);
-        var tables = handle.Tables;
-
-        Console.WriteLine($"Jet version: {handle.JetVersion}, Encoding: {handle.Encoding?.CodePage}");
-        Console.WriteLine($"Tables found: {tables.Count} -> {string.Join(", ", tables.Keys)}");
-
-        foreach (var tableName in onlyTable != null ? new List<string> { onlyTable } : tables.Keys.ToList())
-        {
-            var tableSw = Stopwatch.StartNew();
             try
             {
-                var table = tables[tableName];
-                var columnInfo = table.Columns.Select(c => $"{c.Name}:{c.Type}");
-
-                long rowCount = 0;
-                foreach (var row in table.Rows)
-                {
-                    for (int i = 0; i < row.FieldCount; i++)
-                    {
-                        try
-                        {
-                            _ = row.GetColumnType(i) switch
-                            {
-                                MdbColumnType.OLE => ReadOle(row.GetStream(i)),
-                                MdbColumnType.Memo => ReadMemo(row.GetStreamReader(i)),
-                                MdbColumnType.Binary => row.IsNull(i) ? null : Convert.ToBase64String(row.GetBytes(i)),
-                                _ => row.GetValue(i)
-                            };
-                        }
-                        catch (Exception fieldEx)
-                        {
-                            Console.WriteLine($"    [warn] row {rowCount} col {i} ({row.GetName(i)}): {fieldEx.GetType().Name}: {fieldEx.Message}");
-                        }
-                    }
-                    rowCount++;
-                }
-
+                var (columns, rowCount) = ExportTable(filePath, tableName);
                 tableSw.Stop();
-                Console.WriteLine($"  Table [{tableName}]: {table.Columns.Length} columns, {rowCount} rows, {tableSw.ElapsedMilliseconds} ms");
-                Console.WriteLine($"    Columns: {string.Join(", ", columnInfo)}");
+                Console.WriteLine($"  Table [{tableName}]: {columns.Count} columns, {rowCount} rows, {tableSw.ElapsedMilliseconds} ms");
+                Console.WriteLine($"    Columns: {string.Join(", ", columns)}");
             }
             catch (Exception tableEx)
             {
@@ -136,28 +49,59 @@ void RunMmkiwi(string filePath, string? onlyTable)
         }
 
         sw.Stop();
-        Console.WriteLine($"MMKiwi.MdbReader total time: {sw.ElapsedMilliseconds} ms");
+        Console.WriteLine($"mdbtools total time: {sw.ElapsedMilliseconds} ms");
     }
     catch (Exception ex)
     {
         sw.Stop();
-        Console.WriteLine($"MMKiwi.MdbReader FAILED after {sw.ElapsedMilliseconds} ms: {ex.GetType().Name}: {ex.Message}");
+        Console.WriteLine($"mdbtools FAILED after {sw.ElapsedMilliseconds} ms: {ex.GetType().Name}: {ex.Message}");
     }
 }
 
-string? ReadOle(MdbLValStream fOle)
+static List<string> GetTableNames(string filePath)
 {
-    using (fOle)
-    {
-        return Convert.ToBase64String(fOle.ReadToEnd());
-    }
+    var output = RunCommand("mdb-tables", $"-1 \"{filePath}\"");
+    return output
+        .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .ToList();
 }
 
-string? ReadMemo(StreamReader? fMemo)
+static (List<string> Columns, long RowCount) ExportTable(string filePath, string tableName)
 {
-    if (fMemo == null) return null;
-    using (fMemo)
+    var output = RunCommand("mdb-export", $"\"{filePath}\" \"{tableName}\"");
+    var lines = output.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+
+    if (lines.Length == 0)
     {
-        return fMemo.ReadToEnd();
+        return ([], 0);
     }
+
+    var columns = lines[0].Split(',').Select(c => c.Trim('"')).ToList();
+    long rowCount = lines.Length - 1;
+    return (columns, rowCount);
+}
+
+static string RunCommand(string fileName, string arguments)
+{
+    var psi = new ProcessStartInfo
+    {
+        FileName = fileName,
+        Arguments = arguments,
+        RedirectStandardOutput = true,
+        RedirectStandardError = true,
+        UseShellExecute = false,
+        CreateNoWindow = true
+    };
+
+    using var process = Process.Start(psi) ?? throw new InvalidOperationException($"Failed to start {fileName}");
+    string stdout = process.StandardOutput.ReadToEnd();
+    string stderr = process.StandardError.ReadToEnd();
+    process.WaitForExit();
+
+    if (process.ExitCode != 0)
+    {
+        throw new InvalidOperationException($"{fileName} exited with code {process.ExitCode}: {stderr}");
+    }
+
+    return stdout;
 }

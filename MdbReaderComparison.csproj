@@ -7,9 +7,5 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="MMKiwi.MdbReader" Version="0.1.0-beta1" />
-    <PackageReference Include="System.Data.OleDb" Version="10.0.10" />
-  </ItemGroup>
 
 </Project>
