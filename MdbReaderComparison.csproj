@@ -8,7 +8,13 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="MMKiwi.MdbReader" Version="0.1.0-beta1" />
+    <Compile Remove="MdbReader\**\*.cs" />
+    <Compile Remove="bin\**\*.cs" />
+    <Compile Remove="obj\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="MdbReader\src\MdbReader\MdbReader.csproj" />
     <PackageReference Include="System.Data.OleDb" Version="10.0.10" />
   </ItemGroup>
 
