@@ -49,7 +49,7 @@ Runs OleDb, then MMKiwi.MdbReader, against the same file. Reports per table: col
 
 Tables found: 1 (`export`). Rows read: 89,300. Columns: 22.
 
-| Metric | OleDb (ACE.OLEDB.12.0) — Windows | MMKiwi.MdbReader (0.1.0-beta1) — Windows | MMKiwi.MdbReader (0.1.0-beta1) — Linux | MMKiwi.MdbReader (zgabi + wj-hcs forks) — Windows Release avg | mdbtools — Linux Release avg (5 runs) |
+| Metric | OleDb (ACE.OLEDB.12.0) — Windows | MMKiwi.MdbReader (0.1.0-beta1) — Windows | MMKiwi.MdbReader (0.1.0-beta1) — Linux | MMKiwi.MdbReader (zgabi + wj-hcs forks) — Linux Release | mdbtools — Linux Release |
 |---|---|---|---|---|---|
 | Column types | String / Double | Text / Double | Text / Double | Text / Double | (untyped — CSV export) |
 | Elapsed time | 426 ms | 1,880 ms |  2539 ms | 1,860.7 ms | 1,161 ms |
@@ -61,7 +61,7 @@ Sample file `SampleMultiTable.mdb` created via ADOX/ACE OLEDB, bulk-inserted to 
 
 Tables found: 3 (`Customers`, `Orders`, `Products`).
 
-| Metric | OleDb (ACE.OLEDB.12.0) — Windows | MMKiwi.MdbReader — Windows | MMKiwi.MdbReader — Linux (avg of 5 runs) | MMKiwi.MdbReader (zgabi + wj-hcs forks) — Windows Release avg | mdbtools — Linux Release avg (5 runs) |
+| Metric | OleDb (ACE.OLEDB.12.0) — Windows | MMKiwi.MdbReader — Windows | MMKiwi.MdbReader — Linux | MMKiwi.MdbReader (zgabi + wj-hcs forks) — Linux Release | mdbtools — Linux Release |
 |---|---|---|---|---|---|
 | Rows per table | Customers 50,003 (20 ms), Orders 50,002 (7 ms), Products 50,004 (7 ms) | Customers 50,003 (68 ms), Orders 50,002 (44 ms), Products 50,004 (51 ms) | Customers 50,003 (133 ms), Orders 50,002 (80 ms), Products 50,004 (201 ms) | Customers 50,003 (102 ms), Orders 50,002 (47.5 ms), Products 50,004 (62.75 ms) | Customers 50,003 (57.2 ms), Orders 50,002 (102.6 ms), Products 50,004 (101 ms) |
 | Total elapsed | 167 ms | 185 ms | 504 ms | 212.25 ms | 283.2 ms |
@@ -71,7 +71,7 @@ Tables found: 3 (`Customers`, `Orders`, `Products`).
 
 Tables found: 1 (`DATA`). Rows read: 343,655. Columns: 81.
 
-| Metric | OleDb (ACE.OLEDB.12.0) — Windows | MMKiwi.MdbReader (0.1.0-beta1) — Windows | MMKiwi.MdbReader (0.1.0-beta1) — Linux | MMKiwi.MdbReader (zgabi + wj-hcs forks) — Windows Release avg | mdbtools — Linux Release avg (4 runs) |
+| Metric | OleDb (ACE.OLEDB.12.0) — Windows | MMKiwi.MdbReader (0.1.0-beta1) — Windows | MMKiwi.MdbReader (0.1.0-beta1) — Linux | MMKiwi.MdbReader (zgabi + wj-hcs forks) — Linux Release | mdbtools — Linux Release |
 |---|---|---|---|---|---|
 | Column types | String / Double / DateTime | Text / Memo (long text) / Double / DateTime | Text / Memo (long text) / Double / DateTime | Text / Memo (long text) / Double / DateTime | (untyped — CSV export) |
 | Elapsed time | 70,706 ms | 152,340 ms | 35,755 ms | 8,066.75 ms | 20,193.25 ms |
