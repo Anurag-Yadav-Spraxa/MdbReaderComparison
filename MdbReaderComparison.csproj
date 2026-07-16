@@ -15,7 +15,6 @@
 
   <ItemGroup>
     <ProjectReference Include="MdbReader\src\MdbReader\MdbReader.csproj" />
-    <PackageReference Include="System.Data.OleDb" Version="10.0.10" />
   </ItemGroup>
 
 </Project>

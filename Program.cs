@@ -1,7 +1,6 @@
-using System.Data.OleDb;
-using System.Diagnostics;
 using MMKiwi.MdbReader;
 using MMKiwi.MdbReader.Values;
+using System.Diagnostics;
 
 if (args.Length == 0)
 {
@@ -21,65 +20,9 @@ if (!File.Exists(filePath))
 Console.WriteLine($"Comparing readers for: {filePath}");
 Console.WriteLine(new string('=', 80));
 
-RunOleDb(filePath, onlyTable);
-Console.WriteLine();
 RunMmkiwi(filePath, onlyTable);
 
 return 0;
-
-static void RunOleDb(string filePath, string? onlyTable)
-{
-    Console.WriteLine("--- OleDb (Microsoft.ACE.OLEDB.12.0) ---");
-    var sw = Stopwatch.StartNew();
-    try
-    {
-        string connectionString = $"Provider=Microsoft.ACE.OLEDB.12.0;Data Source={filePath};Persist Security Info=False;";
-        using var connection = new OleDbConnection(connectionString);
-        connection.Open();
-
-        var schemaTable = connection.GetSchema("Tables", new string?[] { null, null, null, "TABLE" });
-        var tableNames = new List<string>();
-        foreach (System.Data.DataRow row in schemaTable.Rows)
-        {
-            tableNames.Add(row["TABLE_NAME"].ToString() ?? "");
-        }
-
-        Console.WriteLine($"Tables found: {tableNames.Count} -> {string.Join(", ", tableNames)}");
-
-        foreach (var tableName in onlyTable != null ? new List<string> { onlyTable } : tableNames)
-        {
-            var tableSw = Stopwatch.StartNew();
-            using var command = new OleDbCommand($"SELECT * FROM [{tableName}]", connection);
-            using var reader = command.ExecuteReader();
-
-            var columnNames = new List<string>();
-            var columnTypes = new List<string>();
-            for (int i = 0; i < reader.FieldCount; i++)
-            {
-                columnNames.Add(reader.GetName(i));
-                columnTypes.Add(reader.GetFieldType(i).Name);
-            }
-
-            long rowCount = 0;
-            while (reader.Read())
-            {
-                rowCount++;
-            }
-
-            tableSw.Stop();
-            Console.WriteLine($"  Table [{tableName}]: {reader.FieldCount} columns, {rowCount} rows, {tableSw.ElapsedMilliseconds} ms");
-            Console.WriteLine($"    Columns: {string.Join(", ", columnNames.Zip(columnTypes, (n, t) => $"{n}:{t}"))}");
-        }
-
-        sw.Stop();
-        Console.WriteLine($"OleDb total time: {sw.ElapsedMilliseconds} ms");
-    }
-    catch (Exception ex)
-    {
-        sw.Stop();
-        Console.WriteLine($"OleDb FAILED after {sw.ElapsedMilliseconds} ms: {ex.GetType().Name}: {ex.Message}");
-    }
-}
 
 void RunMmkiwi(string filePath, string? onlyTable)
 {
@@ -153,6 +96,8 @@ string? ReadOle(MdbLValStream fOle)
     }
 }
 
+// Memo columns are unlimited-length text stored separately from the row data,
+// so MMKiwi exposes them as a StreamReader instead of a plain string.
 string? ReadMemo(StreamReader? fMemo)
 {
     if (fMemo == null) return null;
