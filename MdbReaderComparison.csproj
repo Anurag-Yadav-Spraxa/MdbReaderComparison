@@ -8,13 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="MdbReader\**\*.cs" />
-    <Compile Remove="bin\**\*.cs" />
-    <Compile Remove="obj\**\*.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="MdbReader\src\MdbReader\MdbReader.csproj" />
+    <PackageReference Include="MMKiwi.MdbReader" Version="0.1.0-beta1" />
   </ItemGroup>
 
 </Project>

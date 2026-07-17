@@ -45,6 +45,50 @@ dotnet run -- <path-to-mdb-or-accdb> [tableName]
 
 Runs OleDb, then MMKiwi.MdbReader, against the same file. Reports per table: columns/types, row count, elapsed time, errors. `[tableName]` optionally limits to one table.
 
+## Using a local NuGet package built from the MdbReader fork
+
+Instead of a `ProjectReference` to a cloned copy of the fork's source (which requires the source folder to sit inside/near this project), the fork can be packed into a local `.nupkg` and consumed like any other NuGet package.
+
+**1. Clone the fork** (kept outside this project folder, e.g. `c:\mnt\IIPL\MdbReader`):
+
+```
+cd c:\mnt\IIPL
+git clone https://github.com/Anurag-Yadav-Spraxa/MdbReader.git
+```
+
+**2. Pack it into a local `.nupkg`**, output into a `local-packages` folder inside `MdbReaderComparison`:
+
+```
+cd c:\mnt\IIPL\MdbReader\src\MdbReader
+dotnet pack -c Release -o "c:\mnt\IIPL\MdbReaderComparison\local-packages"
+```
+
+This produces `MMKiwi.MdbReader.0.1.0-beta1.nupkg` (the package) and `MMKiwi.MdbReader.0.1.0-beta1.snupkg` (symbols, for source-level debugging — optional but harmless to keep alongside it). Both files should be committed to source control since there's no public feed hosting this custom build.
+
+**3. Add `nuget.config`** in `MdbReaderComparison\` so NuGet knows to look in `local-packages` in addition to nuget.org (removing nuget.org would break restore for any other normal package dependency):
+
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <packageSources>
+    <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+    <add key="local-mdbreader" value="local-packages" />
+  </packageSources>
+</configuration>
+```
+
+**4. Reference it in `MdbReaderComparison.csproj`** exactly like a normal NuGet package:
+
+```xml
+<ItemGroup>
+  <PackageReference Include="MMKiwi.MdbReader" Version="0.1.0-beta1" />
+</ItemGroup>
+```
+
+**5. Build** — `dotnet build` now restores `MMKiwi.MdbReader` from the local folder instead of needing a `ProjectReference` to the cloned source, so the fork's source folder no longer needs to live inside or next to this project at build time.
+
+If the fork changes, re-run step 2 to regenerate the `.nupkg` (bump the `<Version>` in `MdbReader.csproj` first if you want NuGet to treat it as a new version rather than reusing a cached one).
+
 ## Test 1 — `202606-EXP-RAW.accdb` (Access2007, single table, ~54 MB) — 2026-07-15
 
 Tables found: 1 (`export`). Rows read: 89,300. Columns: 22.
